@@ -1,0 +1,84 @@
+% Parameters
+N = 64;                  % Number of subcarriers
+M = 16;                  % Modulation order (16-QAM)
+Fs = 1000;               % Sampling frequency (Hz)
+SNR = 10;                % Signal-to-noise ratio in dB
+N_pilot = 8;             % Number of pilots
+N_bits = 1024;           % Number of bits to transmit (must be divisible by N)
+
+% Generate random bit stream
+bits = randi([0 1], N_bits, 1);
+
+% Modulation (16-QAM)
+symbols = qammod(bits, M, 'InputType', 'bit', 'UnitAveragePower', true);
+
+% Reshape symbols into OFDM symbols (N subcarriers)
+num_symbols = length(symbols);
+num_ofdm_symbols = num_symbols / N;  % Calculate number of OFDM symbols
+symbols_reshaped = reshape(symbols, N, num_ofdm_symbols);
+
+% Add pilots (for simplicity, we use all 1's as pilot values)
+pilot_symbols = ones(N_pilot, num_ofdm_symbols);  % Pilot symbols
+ofdm_symbols_with_pilots = [pilot_symbols; symbols_reshaped];
+
+% IFFT to generate time-domain signal
+time_domain_signal = ifft(ofdm_symbols_with_pilots, N, 1);
+
+% Add cyclic prefix
+cyclic_prefix_len = 16; % Cyclic prefix length
+cyclic_prefix = time_domain_signal(end-cyclic_prefix_len+1:end, :);
+ofdm_signal_with_cp = [cyclic_prefix; time_domain_signal];
+
+% Channel: Multipath fading (Rayleigh fading model)
+h = (randn(N, 1) + 1j*randn(N, 1)) / sqrt(2); % Channel impulse response (Rayleigh fading)
+
+% Broadcast channel response over all OFDM symbols
+h_broadcasted = repmat(h, N + cyclic_prefix_len, 1);  % Channel response repeated for all samples
+
+% Apply channel fading effect (multiplication)
+received_signal = ofdm_signal_with_cp .* h_broadcasted;
+
+% Add noise
+received_signal_noisy = awgn(received_signal, SNR, 'measured');
+
+% Remove cyclic prefix
+received_signal_no_cp = received_signal_noisy(cyclic_prefix_len+1:end, :);
+
+% FFT to recover frequency-domain symbols
+received_symbols = fft(received_signal_no_cp, N, 1);
+
+% Channel estimation using pilots
+% Extract pilot symbols
+pilots_received = received_symbols(1:N_pilot, :);
+pilot_estimate = mean(pilots_received ./ pilot_symbols, 2);
+
+% Estimate the channel response (assuming perfect synchronization)
+H_estimated = pilot_estimate; 
+
+% Equalize received symbols
+received_symbols_eq = received_symbols ./ repmat(H_estimated, 1, size(received_symbols, 2));
+
+% Demodulate the symbols
+demodulated_bits = qamdemod(received_symbols_eq(N_pilot+1:end, :), M, 'OutputType', 'bit', 'UnitAveragePower', true);
+
+% Compute the Bit Error Rate (BER)
+ber = sum(bits ~= demodulated_bits) / N_bits;
+
+% Plot the estimated channel response
+figure;
+subplot(2, 1, 1);
+plot(abs(H_estimated));
+title('Estimated Channel Response');
+xlabel('Subcarrier Index');
+ylabel('Magnitude');
+
+% Plot the BER
+subplot(2, 1, 2);
+semilogy(SNR, ber, '-o');
+title('Bit Error Rate vs. SNR');
+xlabel('SNR (dB)');
+ylabel('BER');
+grid on;
+
+% Display the BER result
+disp(['The Bit Error Rate (BER) is: ', num2str(ber)]);

@@ -1,0 +1,94 @@
+% Audio Purity Quest - MATLAB Code
+
+% Define parameters
+Fs = 16000;             % Sampling frequency in Hz
+passband_freq = 800;    % Passband frequency in Hz
+stopband_freq = 1200;   % Stopband frequency in Hz
+passband_ripple = 2;    % Passband ripple in dB
+stopband_atten = 30;    % Stopband attenuation in dB
+
+% Design the Butterworth low-pass filter
+Wp = passband_freq / (Fs/2); % Passband edge normalized
+Ws = stopband_freq / (Fs/2); % Stopband edge normalized
+
+% Determine the filter order and cutoff frequency
+[n, Wn] = buttord(Wp, Ws, passband_ripple, stopband_atten);
+
+% Create the Butterworth filter
+[b, a] = butter(n, Wn, 'low');
+
+% Display filter characteristics
+fvtool(b, a); % Opens a filter analysis tool to visualize the response
+
+% Create test signal
+t = 0:1/Fs:1; % 1-second duration
+signal = sin(2*pi*300*t) + sin(2*pi*600*t) + sin(2*pi*900*t) + ...
+         sin(2*pi*1500*t) + sin(2*pi*2000*t);
+
+% Apply the ClearTone filter to the test signal
+filtered_signal = filter(b, a, signal);
+
+% Zero-phase filtering
+filtered_signal_zero_phase = filtfilt(b, a, signal);
+
+% Plot time-domain results
+figure;
+subplot(3,1,1);
+plot(t, signal);
+title('Original Signal (Time Domain)');
+xlabel('Time (s)');
+ylabel('Amplitude');
+
+subplot(3,1,2);
+plot(t, filtered_signal);
+title('Filtered Signal (Time Domain)');
+xlabel('Time (s)');
+ylabel('Amplitude');
+
+subplot(3,1,3);
+plot(t, filtered_signal_zero_phase);
+title('Zero-Phase Filtered Signal (Time Domain)');
+xlabel('Time (s)');
+ylabel('Amplitude');
+
+% Frequency-domain analysis
+nfft = length(signal);
+f = Fs/2*linspace(0,1,fix(nfft/2)+1); % Frequency axis
+
+% Compute the Fourier transforms
+S_orig = fft(signal, nfft);
+S_filt = fft(filtered_signal, nfft);
+S_filt_zero = fft(filtered_signal_zero_phase, nfft);
+
+% Plot frequency-domain results
+figure;
+subplot(3,1,1);
+plot(f, 2*abs(S_orig(1:fix(nfft/2)+1)));
+title('Original Signal (Frequency Domain)');
+xlabel('Frequency (Hz)');
+ylabel('Magnitude');
+
+subplot(3,1,2);
+plot(f, 2*abs(S_filt(1:fix(nfft/2)+1)));
+title('Filtered Signal (Frequency Domain)');
+xlabel('Frequency (Hz)');
+ylabel('Magnitude');
+
+subplot(3,1,3);
+plot(f, 2*abs(S_filt_zero(1:fix(nfft/2)+1)));
+title('Zero-Phase Filtered Signal (Frequency Domain)');
+xlabel('Frequency (Hz)');
+ylabel('Magnitude');
+
+% Experiment with different filter orders
+orders = [2, 4, 6, 8];
+figure;
+for i = 1:length(orders)
+    [b_temp, a_temp] = butter(orders(i), Wn, 'low');
+    temp_filtered_signal = filter(b_temp, a_temp, signal);
+    subplot(2, 2, i);
+    plot(t, temp_filtered_signal);
+    title(['Filtered Signal with Order ', num2str(orders(i))]);
+    xlabel('Time (s)');
+    ylabel('Amplitude');
+end

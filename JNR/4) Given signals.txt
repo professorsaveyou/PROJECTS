@@ -1,0 +1,37 @@
+% Given signals
+x = [1, 2, 3, 4];
+h = [1, -1, 1, -1];
+
+% a. Compute the linear convolution
+y_linear = conv(x, h);
+
+% b. Compute the circular convolution by zero-padding to the length of linear convolution
+N = length(x) + length(h) - 1; % Required length for linear convolution
+x_padded = [x, zeros(1, N - length(x))];
+h_padded = [h, zeros(1, N - length(h))];
+y_circular = ifft(fft(x_padded) .* fft(h_padded)); % Circular convolution using FFT
+
+% c. Plotting the results
+figure;
+
+% Plot linear convolution result
+subplot(2, 1, 1);
+stem(0:length(y_linear)-1, y_linear, 'filled', 'LineWidth', 1.5);
+title('Linear Convolution of x[n] and h[n]');
+xlabel('n');
+ylabel('y_{linear}[n]');
+grid on;
+
+% Plot circular convolution result
+subplot(2, 1, 2);
+stem(0:length(y_circular)-1, real(y_circular), 'filled', 'LineWidth', 1.5); % Take real part to avoid tiny imaginary components
+title('Circular Convolution of x[n] and h[n]');
+xlabel('n');
+ylabel('y_{circular}[n]');
+grid on;
+
+% Display results in the command window
+disp('Linear Convolution Result:');
+disp(y_linear);
+disp('Circular Convolution Result:');
+disp(real(y_circular)); % Display real part for clarity

@@ -1,0 +1,51 @@
+% System Parameters
+N_bits = 1000;             % Length of the bit stream
+SNR_range = 0:2:20;        % Range of SNR values (in dB)
+modulation_schemes = {'BPSK', 'QPSK', '16-QAM'}; % Modulation schemes
+
+% Generate a random bit stream (binary)
+bits = randi([0 1], N_bits, 1);
+
+% Initialize arrays to store BER for each modulation scheme and SNR
+BER_BPSK = zeros(length(SNR_range), 1);
+BER_QPSK = zeros(length(SNR_range), 1);
+BER_16QAM = zeros(length(SNR_range), 1);
+
+% Iterate over SNR values
+for snr_idx = 1:length(SNR_range)
+    SNR_dB = SNR_range(snr_idx);
+    
+    % BPSK Modulation
+    bpsk_symbols = 2*bits - 1; % Map bits to BPSK symbols (-1, 1)
+    bpsk_received = awgn(bpsk_symbols, SNR_dB, 'measured'); % Add AWGN noise
+    bpsk_decoded = bpsk_received > 0; % Decision rule
+    BER_BPSK(snr_idx) = sum(bits ~= bpsk_decoded) / N_bits; % Calculate BER
+    
+    % QPSK Modulation
+    qpsk_symbols = pskmod(bits, 4, pi/4); % Map bits to QPSK symbols
+    qpsk_received = awgn(qpsk_symbols, SNR_dB, 'measured'); % Add AWGN noise
+    qpsk_decoded = pskdemod(qpsk_received, 4, pi/4); % Demodulate QPSK symbols
+    BER_QPSK(snr_idx) = sum(bits ~= qpsk_decoded) / N_bits; % Calculate BER
+    
+    % 16-QAM Modulation
+   qam_symbols = qammod(bits, 16, 'InputType', 'bit', 'UnitAveragePower', true); % Map bits to 16-QAM symbols
+    qam_received = awgn(qam_symbols, SNR_dB, 'measured'); % Add AWGN noise
+    qam_decoded = qamdemod(qam_received, 16, 'OutputType', 'bit', 'UnitAveragePower', true); % Demodulate 16-QAM symbols
+    BER_16QAM(snr_idx) = sum(bits ~= qam_decoded) / N_bits; % Calculate BER
+end
+
+% Plot the Bit Error Rate (BER) vs. SNR for each modulation scheme
+figure;
+semilogy(SNR_range, BER_BPSK, '-o', 'LineWidth', 2); hold on;
+semilogy(SNR_range, BER_QPSK, '-x', 'LineWidth', 2);
+semilogy(SNR_range, BER_16QAM, '-s', 'LineWidth', 2);
+xlabel('SNR (dB)');
+ylabel('Bit Error Rate (BER)');
+legend('BPSK', 'QPSK', '16-QAM');
+title('BER vs. SNR for Different Modulation Schemes');
+grid on;
+
+% Display the results
+disp('Bit Error Rates for different SNRs and Modulation Schemes:');
+disp(table(SNR_range', BER_BPSK, BER_QPSK, BER_16QAM, ...
+    'VariableNames', {'SNR (dB)', 'BPSK', 'QPSK', '16-QAM'}));

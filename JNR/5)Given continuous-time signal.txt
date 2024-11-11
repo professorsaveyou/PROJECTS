@@ -1,0 +1,58 @@
+% Given continuous-time signal
+Fs = 100;               % Sampling rate in Hz
+T = 1;                   % Signal duration in seconds
+t = 0:1/Fs:T-1/Fs;      % Time vector for 1 second duration
+
+% Continuous-time signal: x(t) = sin(2*pi*t)
+x_cont = sin(2*pi*t);
+
+% a. Quantize the sampled signal using a 3-bit uniform quantizer
+
+% Define the number of bits and calculate the quantization levels
+n_bits = 3;
+n_levels = 2^n_bits;  % Number of quantization levels
+max_value = max(x_cont); % Maximum value of the signal
+min_value = min(x_cont); % Minimum value of the signal
+
+% Quantization step size (quantization resolution)
+step_size = (max_value - min_value) / (n_levels - 1);
+
+% Perform quantization
+quantized_x = round((x_cont - min_value) / step_size) * step_size + min_value;
+
+% b. Compute and plot the quantization error
+quantization_error = x_cont - quantized_x;
+
+% Plot the quantized signal and quantization error
+figure;
+
+% Plot the quantized signal
+subplot(2, 1, 1);
+plot(t, x_cont, 'b', 'LineWidth', 1.5); hold on;
+plot(t, quantized_x, 'r--', 'LineWidth', 1.5);
+title('Original and Quantized Signals');
+xlabel('Time (s)');
+ylabel('Amplitude');
+legend('Original x(t)', 'Quantized x(t)');
+grid on;
+
+% Plot the quantization error
+subplot(2, 1, 2);
+plot(t, quantization_error, 'k', 'LineWidth', 1.5);
+title('Quantization Error');
+xlabel('Time (s)');
+ylabel('Error');
+grid on;
+
+% c. Signal-to-Quantization-Noise Ratio (SQNR)
+% Compute the mean square error of the quantization error
+MSE = mean(quantization_error.^2);
+
+% Compute the Signal Power (mean square of the original signal)
+signal_power = mean(x_cont.^2);
+
+% Compute the SQNR in dB
+SQNR = 10 * log10(signal_power / MSE);
+
+% Display SQNR
+disp(['The Signal-to-Quantization-Noise Ratio (SQNR) is: ', num2str(SQNR), ' dB']);

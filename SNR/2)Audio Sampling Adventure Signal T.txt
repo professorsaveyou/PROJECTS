@@ -1,0 +1,70 @@
+% Audio Sampling Adventure: Signal Transformation Quest
+
+% 1. Create Your Sound
+fs_original = 44100;       % Original high-fidelity sampling rate in Hz
+f = 1000;                  % Frequency of the sine wave in Hz (1 kHz)
+duration = 1.0;            % Duration of the signal in seconds
+t = 0:1/fs_original:duration-1/fs_original;  % Time vector
+original_signal = sin(2 * pi * f * t);       % Generate a clean sine wave
+
+% Plot the original signal
+figure;
+subplot(4, 1, 1);
+plot(t(1:500), original_signal(1:500)); % Display first 500 samples for clarity
+title('Original High-Fidelity Signal');
+xlabel('Time (s)');
+ylabel('Amplitude');
+grid on;
+
+% 2. Reduce the Load: Downsampling
+downsample_factor = 4;     % Downsampling factor
+fs_downsampled = fs_original / downsample_factor;  % New sampling rate
+downsampled_signal = downsample(original_signal, downsample_factor);
+
+% Time vector for downsampled signal
+t_downsampled = 0:1/fs_downsampled:duration-1/fs_downsampled;
+
+% Plot the downsampled signal
+subplot(4, 1, 2);
+plot(t_downsampled(1:125), downsampled_signal(1:125)); % Display first 125 samples
+title(['Downsampled Signal (', num2str(fs_downsampled), ' Hz)']);
+xlabel('Time (s)');
+ylabel('Amplitude');
+grid on;
+
+% 3. Restore the Harmony: Upsampling and Interpolation
+% Upsample and interpolate to bring it back to the original sampling rate
+upsampled_signal = upsample(downsampled_signal, downsample_factor);  % Insert zeros
+interpolated_signal = interp1(t_downsampled, downsampled_signal, t, 'linear', 'extrap');
+
+% Plot the upsampled and interpolated signal
+subplot(4, 1, 3);
+plot(t(1:500), interpolated_signal(1:500)); % Display first 500 samples
+title('Reconstructed Signal after Upsampling and Interpolation');
+xlabel('Time (s)');
+ylabel('Amplitude');
+grid on;
+
+% 4. Quality Check: Calculate SNR
+snr_value = 10 * log10(mean(original_signal .^ 2) / mean((original_signal - interpolated_signal) .^ 2));
+disp(['Signal-to-Noise Ratio (SNR): ', num2str(snr_value), ' dB']);
+
+% 5. Visualize the Journey: Plot the Frequency Spectrum
+subplot(4, 1, 4);
+nfft = 1024;   % Number of FFT points for spectral analysis
+f_axis = linspace(-fs_original/2, fs_original/2, nfft);
+
+% Original Signal Spectrum
+original_spectrum = fftshift(abs(fft(original_signal, nfft)));
+plot(f_axis, 20*log10(original_spectrum / max(original_spectrum)), 'b');
+hold on;
+
+% Interpolated Signal Spectrum
+reconstructed_spectrum = fftshift(abs(fft(interpolated_signal, nfft)));
+plot(f_axis, 20*log10(reconstructed_spectrum / max(reconstructed_spectrum)), 'r--');
+title('Frequency Spectrum of Original and Reconstructed Signals');
+xlabel('Frequency (Hz)');
+ylabel('Magnitude (dB)');
+legend('Original Signal', 'Reconstructed Signal');
+grid on;
+hold off;

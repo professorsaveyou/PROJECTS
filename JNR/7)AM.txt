@@ -1,0 +1,62 @@
+% Parameters
+N_bits = 1000;            % Length of bit stream
+SNR_values = 0:2:20;      % SNR values to simulate (in dB)
+modulation_order = [2, 4, 16];  % BPSK (2), QPSK (4), 16-QAM (16)
+
+% Generate random bit stream
+bits = randi([0 1], N_bits, 1);
+
+% Initialize BER array to store results
+BER = zeros(length(SNR_values), 3);  % 3 for the three modulation schemes
+
+% Iterate over different SNR values
+for snr_idx = 1:length(SNR_values)
+    SNR = SNR_values(snr_idx);  % Current SNR value in dB
+
+    % Select modulation scheme based on SNR
+    if SNR < 5
+        % BPSK modulation (SNR < 5 dB)
+        mod_type = 'BPSK';
+        M = 2;  % Modulation order for BPSK
+        symbols = qammod(bits, M, 'InputType', 'bit', 'UnitAveragePower', true);
+    elseif SNR >= 5 && SNR < 15
+        % QPSK modulation (5 <= SNR < 15 dB)
+        mod_type = 'QPSK';
+        M = 4;  % Modulation order for QPSK
+        symbols = qammod(bits, M, 'InputType', 'bit', 'UnitAveragePower', true);
+    else
+        % 16-QAM modulation (SNR >= 15 dB)
+        mod_type = '16-QAM';
+        M = 16;  % Modulation order for 16-QAM
+        symbols = qammod(bits, M, 'InputType', 'bit', 'UnitAveragePower', true);
+    end
+
+    % Transmit the modulated signal over a noisy channel
+    noise = (1/sqrt(2)) * (randn(size(symbols)) + 1i*randn(size(symbols)));  % Additive white Gaussian noise
+    noisy_signal = symbols + 10^(-SNR/20) * noise;  % Signal with noise based on SNR
+    
+    % Demodulate the received signal
+    received_symbols = noisy_signal;
+    demodulated_bits = qamdemod(received_symbols, M, 'OutputType', 'bit', 'UnitAveragePower', true);
+    
+    % Compute the Bit Error Rate (BER)
+    if strcmp(mod_type, 'BPSK')
+        BER(snr_idx, 1) = sum(bits ~= demodulated_bits) / N_bits;
+    elseif strcmp(mod_type, 'QPSK')
+        BER(snr_idx, 2) = sum(bits ~= demodulated_bits) / N_bits;
+    else
+        BER(snr_idx, 3) = sum(bits ~= demodulated_bits) / N_bits;
+    end
+end
+
+% Plot the results
+figure;
+semilogy(SNR_values, BER(:, 1), 'r-', 'LineWidth', 2); % BPSK
+hold on;
+semilogy(SNR_values, BER(:, 2), 'g-', 'LineWidth', 2); % QPSK
+semilogy(SNR_values, BER(:, 3), 'b-', 'LineWidth', 2); % 16-QAM
+grid on;
+xlabel('SNR (dB)');
+ylabel('Bit Error Rate (BER)');
+legend('BPSK', 'QPSK', '16-QAM');
+title('BER vs. SNR for Adaptive Modulation');

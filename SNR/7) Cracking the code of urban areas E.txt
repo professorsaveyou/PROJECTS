@@ -1,0 +1,76 @@
+% System Parameters
+N_subcarriers = 64;           % Number of subcarriers
+M = 4;                        % Modulation order (QPSK)
+cp_length = 16;               % Length of the cyclic prefix
+N_tx = 2;                     % Number of transmit antennas
+N_rx = 2;                     % Number of receive antennas
+N_bits = 1024;                % Length of the random bit stream
+SNR_dB = 20;                  % Signal-to-noise ratio in dB
+N_pilot = 4;                  % Number of pilot symbols
+
+% Generate Random Data Stream
+bits = randi([0 1], N_bits, 1);
+
+% Map the bits to QPSK symbols (2 bits per symbol)
+symbols = qammod(bits, M, 'InputType', 'bit', 'UnitAveragePower', true);
+
+% Reshape the symbols into OFDM symbols (64 subcarriers)
+num_symbols = length(symbols);
+num_ofdm_symbols = num_symbols / N_subcarriers;
+symbols_reshaped = reshape(symbols, N_subcarriers, num_ofdm_symbols);
+
+% Add Pilot Symbols (Simple example: Pilot symbols are '1's)
+pilot_symbols = ones(N_pilot, num_ofdm_symbols);
+ofdm_symbols_with_pilots = [pilot_symbols; symbols_reshaped];
+
+% Perform IFFT to generate the time-domain signal (OFDM modulation)
+time_domain_signal = ifft(ofdm_symbols_with_pilots, N_subcarriers, 1);
+
+% Add Cyclic Prefix (CP)
+cyclic_prefix = time_domain_signal(end-cp_length+1:end, :);
+ofdm_signal_with_cp = [cyclic_prefix; time_domain_signal];
+
+% Channel: Simulate a Frequency-Selective Fading Channel (Rayleigh fading)
+h = (randn(N_subcarriers, N_tx, N_rx) + 1j*randn(N_subcarriers, N_tx, N_rx)) / sqrt(2); % Rayleigh fading channel
+
+% Initialize received signal array
+received_signal = zeros(N_rx, N_subcarriers + cp_length, num_ofdm_symbols);
+
+% Apply Channel Fading (Assuming no synchronization errors for simplicity)
+for i = 1:num_ofdm_symbols
+    for j = 1:N_rx
+        % Channel effect for each subcarrier and antenna
+        % Multiply the transmitted signal by the corresponding channel response
+        received_signal(j, :, i) = ofdm_signal_with_cp(:, i).' .* squeeze(h(:, 1, j)); 
+    end
+end
+
+% Add AWGN Noise
+received_signal_noisy = awgn(received_signal, SNR_dB, 'measured');
+
+% Remove Cyclic Prefix
+received_signal_no_cp = received_signal_noisy(cp_length+1:end, :, :);
+
+% Perform FFT to convert back to frequency domain
+received_symbols = fft(received_signal_no_cp, N_subcarriers, 1);
+
+% Channel Estimation Using Pilot Symbols
+rx_pilots = received_symbols(1:N_pilot, :, :);   % Extract received pilot symbols
+H_est = rx_pilots ./ pilot_symbols;               % Estimate the channel based on pilots
+
+% Equalize the Received Symbols Using the Estimated Channel
+received_symbols_eq = received_symbols ./ H_est;
+
+% Demodulate the QPSK Symbols (using QPSK demodulation)
+demodulated_bits = qamdemod(received_symbols_eq(N_pilot+1:end, :, :), M, 'OutputType', 'bit', 'UnitAveragePower', true);
+
+% Calculate the Bit Error Rate (BER)
+ber = sum(bits ~= demodulated_bits(:)) / N_bits;
+
+% Plot the Constellation Diagram of the Equalized Symbols
+figure;
+scatterplot(received_symbols_eq(:));
+title('Constellation Diagram of Equalized Received Symbols');
+
+% Display the Bit Error Rate
+disp(['The Bit Error Rate (BER) is: ', num2str(ber)]);

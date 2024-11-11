@@ -1,0 +1,98 @@
+% Power-Saving Signals for Smart IoT Sensors
+
+% Parameters
+num_bits = 1000;             % Number of bits to transmit
+SNR_dB = 0:2:20;             % SNR range in dB
+power_levels = [0.1, 0.5, 1]; % Low, Medium, High power levels
+
+% Generate random bit sequence
+data_bits = randi([0 1], 1, num_bits);
+
+% 2-ASK Modulation (On-Off Keying)
+mod_2ask = 2 * data_bits - 1;  % Map 0 -> -1 (Off), 1 -> 1 (On)
+
+% 4-ASK Modulation
+if mod(num_bits, 2) ~= 0
+    data_bits = [data_bits, 0];  % Pad with 0 if odd number of bits
+end
+data_pairs = reshape(data_bits, 2, [])';  % Reshape into pairs
+symbol_mapping = [-3, -1, 1, 3];          % 4-ASK levels
+mod_4ask = symbol_mapping(bi2de(data_pairs) + 1)';
+
+% Initialize BER results
+BER_2ASK = zeros(length(power_levels), length(SNR_dB));
+BER_4ASK = zeros(length(power_levels), length(SNR_dB));
+
+% Loop over power levels and SNR values
+for p = 1:length(power_levels)
+    power = power_levels(p);
+    
+    for s = 1:length(SNR_dB)
+        SNR = 10^(SNR_dB(s) / 10);
+        
+        % Adjust signal power
+        mod_2ask_tx = sqrt(power) * mod_2ask;
+        mod_4ask_tx = sqrt(power) * mod_4ask;
+        
+        % AWGN Channel Simulation
+        noise_var_2ask = sqrt(power / (2 * SNR));
+        noise_var_4ask = sqrt(power / (2 * SNR));
+        
+        % Add noise to 2-ASK signal
+        noise_2ask = noise_var_2ask * randn(size(mod_2ask_tx));
+        received_2ask = mod_2ask_tx + noise_2ask;
+        
+        % Add noise to 4-ASK signal
+        noise_4ask = noise_var_4ask * randn(size(mod_4ask_tx));
+        received_4ask = mod_4ask_tx + noise_4ask;
+        
+        % Demodulate 2-ASK
+        demod_2ask = received_2ask > 0;
+        ber_2ask = sum(demod_2ask ~= data_bits(1:num_bits)) / num_bits;
+        BER_2ASK(p, s) = ber_2ask;
+        
+        % Demodulate 4-ASK
+        received_4ask_decision = 3 * (received_4ask > 2) + ...
+                                 1 * ((received_4ask > 0) & (received_4ask <= 2)) - ...
+                                 1 * ((received_4ask < 0) & (received_4ask >= -2)) - ...
+                                 3 * (received_4ask < -2);
+        data_pairs_reconstructed = de2bi((received_4ask_decision + 3) / 2)';
+        data_bits_reconstructed = reshape(data_pairs_reconstructed(1:end-1), 1, []);
+       % Demodulate 4-ASK
+received_4ask_decision = 3 * (received_4ask > 2) + ...
+                         1 * ((received_4ask > 0) & (received_4ask <= 2)) - ...
+                         1 * ((received_4ask < 0) & (received_4ask >= -2)) - ...
+                         3 * (received_4ask < -2);
+data_pairs_reconstructed = de2bi((received_4ask_decision + 3) / 2)';
+data_bits_reconstructed = reshape(data_pairs_reconstructed, 1, []);
+
+% Truncate reconstructed bits to match original bit length
+data_bits_reconstructed = data_bits_reconstructed(1:num_bits);
+
+% Calculate BER for 4-ASK
+ber_4ask = sum(data_bits_reconstructed ~= data_bits(1:num_bits)) / num_bits;
+BER_4ASK(p, s) = ber_4ask;
+
+        BER_4ASK(p, s) = ber_4ask;
+    end
+end
+
+% Plotting results
+figure;
+for p = 1:length(power_levels)
+    plot(SNR_dB, BER_2ASK(p, :), '-o', 'DisplayName', sprintf('2-ASK Power %.1f', power_levels(p)));
+    hold on;
+    plot(SNR_dB, BER_4ASK(p, :), '-x', 'DisplayName', sprintf('4-ASK Power %.1f', power_levels(p)));
+end
+set(gca, 'YScale', 'log');
+xlabel('SNR (dB)');
+ylabel('Bit Error Rate (BER)');
+title('BER vs. SNR for 2-ASK and 4-ASK Modulation under Power Constraints');
+legend;
+grid on;
+
+% Analysis Summary
+disp('Analysis Summary:');
+disp('For low power levels, 2-ASK (On-Off Keying) generally achieves better BER performance due to its binary nature.');
+disp('4-ASK offers higher data rates but is more sensitive to noise, making it less suitable for low-power conditions.');
+disp('In summary, 2-ASK modulation is more power-efficient and reliable for remote, battery-operated IoT sensors under noisy conditions.');

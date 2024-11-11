@@ -1,0 +1,92 @@
+% Signal Sleuthing: Analyzing Urban Noise Pollution
+
+% Parameters
+fs = 44100;            % Sampling rate in Hz
+duration = 10;         % Duration of each signal in seconds
+t = 0:1/fs:duration-1/fs;  % Time vector
+
+% 1. Audio Signal Acquisition: Generate three different types of urban noise
+
+% Traffic noise (simulated as a low-frequency rumble with intermittent honks)
+traffic_noise = 0.2 * sin(2 * pi * 80 * t) + 0.1 * randn(size(t)) ...
+                + 0.3 * sin(2 * pi * 400 * t .* (mod(t, 0.5) > 0.45));
+
+% Construction noise (simulated as high-frequency drilling sound with random noise bursts)
+construction_noise = 0.1 * sin(2 * pi * 1500 * t) + 0.3 * randn(size(t)) ...
+                    + 0.05 * sin(2 * pi * 800 * t .* (mod(t, 1) > 0.95));
+
+% Background chatter (simulated as a mix of random low and mid-frequency sounds)
+chatter_noise = 0.05 * sin(2 * pi * 300 * t) + 0.05 * sin(2 * pi * 600 * t) ...
+                + 0.05 * sin(2 * pi * 1000 * t) + 0.15 * randn(size(t));
+
+% 2. DFT Analysis: Compute and plot the DFT for each signal
+nfft = 2^nextpow2(length(t));
+frequencies = linspace(0, fs/2, nfft/2+1);
+
+% Traffic Noise DFT
+traffic_spectrum = fft(traffic_noise, nfft);
+subplot(3, 1, 1);
+plot(frequencies, abs(traffic_spectrum(1:nfft/2+1)));
+title('Traffic Noise - Magnitude Spectrum');
+xlabel('Frequency (Hz)');
+ylabel('Magnitude');
+grid on;
+
+% Construction Noise DFT
+construction_spectrum = fft(construction_noise, nfft);
+subplot(3, 1, 2);
+plot(frequencies, abs(construction_spectrum(1:nfft/2+1)));
+title('Construction Noise - Magnitude Spectrum');
+xlabel('Frequency (Hz)');
+ylabel('Magnitude');
+grid on;
+
+% Chatter Noise DFT
+chatter_spectrum = fft(chatter_noise, nfft);
+subplot(3, 1, 3);
+plot(frequencies, abs(chatter_spectrum(1:nfft/2+1)));
+title('Chatter Noise - Magnitude Spectrum');
+xlabel('Frequency (Hz)');
+ylabel('Magnitude');
+grid on;
+
+% 3. DTFT Exploration: Compute and visualize DTFT for traffic noise from -π to π
+
+% Define frequency range for DTFT
+w = linspace(-pi, pi, nfft);
+traffic_dtft = zeros(size(w));
+for k = 1:length(w)
+    traffic_dtft(k) = sum(traffic_noise .* exp(-1j * w(k) * (0:length(traffic_noise)-1)));
+end
+
+figure;
+subplot(2, 1, 1);
+plot(w, abs(traffic_dtft));
+title('DTFT of Traffic Noise - Magnitude');
+xlabel('Frequency (rad/sample)');
+ylabel('Magnitude');
+grid on;
+
+subplot(2, 1, 2);
+plot(w, angle(traffic_dtft));
+title('DTFT of Traffic Noise - Phase');
+xlabel('Frequency (rad/sample)');
+ylabel('Phase (radians)');
+grid on;
+
+% 4. Impact Assessment Discussion
+disp('Impact Assessment:');
+disp('Traffic noise, with its low-frequency components, can lead to stress and sleep disruption.');
+disp('Construction noise has high-frequency components that may contribute to hearing loss.');
+disp('Chatter noise, while moderate, can be distracting and affect concentration.');
+
+% 5. Recommendations for Urban Planners
+disp('Recommendations:');
+disp('- Use zoning to separate residential areas from high-traffic or construction zones.');
+disp('- Construct sound barriers along major roads or construction sites.');
+disp('- Increase public awareness about the effects of prolonged noise exposure.');
+
+% Summary of Analysis
+disp('Summary: This analysis reveals that urban noise contains specific frequency components');
+disp('that can impact health. Using DFT and DTFT allows us to understand these patterns');
+disp('and propose mitigation strategies.');

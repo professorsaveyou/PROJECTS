@@ -1,0 +1,77 @@
+% DPCM System for Audio Signal Compression
+
+% 1. Signal Generation
+fs = 8000;                  % Sampling frequency in Hz
+f = 440;                    % Frequency of the sine wave (A4 pitch)
+duration = 1.0;             % Duration of the signal in seconds
+t = 0:1/fs:duration-1/fs;   % Time vector
+original_signal = 0.5 * sin(2 * pi * f * t);  % Generate a sine wave
+
+% Plot the original signal
+figure;
+subplot(4, 1, 1);
+plot(t(1:200), original_signal(1:200));  % Display first 200 samples
+title('Original Signal');
+xlabel('Time (s)');
+ylabel('Amplitude');
+grid on;
+
+% Quantization levels for DPCM
+quantization_levels = [2, 3, 4];
+snr_values = zeros(size(quantization_levels));
+
+% 2. DPCM Encoding and 3. Decoding with different quantization levels
+for j = 1:length(quantization_levels)
+    num_bits = quantization_levels(j);
+    [quantized_error, predictions] = dpcm_encode(original_signal, num_bits);
+    reconstructed_signal = dpcm_decode(quantized_error);
+    
+    % 4. Performance Evaluation: Calculate SNR
+    snr_values(j) = calculate_snr(original_signal, reconstructed_signal);
+    
+    % Plot quantized error and reconstructed signal
+    subplot(4, 1, j+1);
+    plot(t(1:200), reconstructed_signal(1:200));
+    title(['Reconstructed Signal with ', num2str(num_bits), '-bit Quantization']);
+    xlabel('Time (s)');
+    ylabel('Amplitude');
+    grid on;
+end
+
+% Display SNR results
+disp('SNR values for different quantization levels (in dB):');
+for j = 1:length(quantization_levels)
+    disp([num2str(quantization_levels(j)), '-bit: ', num2str(snr_values(j)), ' dB']);
+end
+
+% Function Definitions
+function [quantized_error, predictions] = dpcm_encode(signal, num_bits)
+    step_size = 2 / (2^num_bits - 1);  % Quantization step size
+    quantized_error = zeros(size(signal));
+    predictions = zeros(size(signal));
+    previous_sample = 0;
+    
+    for i = 1:length(signal)
+        prediction = previous_sample;
+        error = signal(i) - prediction;
+        quantized_error(i) = round(error / step_size) * step_size;
+        previous_sample = prediction + quantized_error(i);
+        predictions(i) = prediction;
+    end
+end
+
+function reconstructed_signal = dpcm_decode(quantized_error)
+    reconstructed_signal = zeros(size(quantized_error));
+    previous_sample = 0;
+    
+    for i = 1:length(quantized_error)
+        reconstructed_signal(i) = previous_sample + quantized_error(i);
+        previous_sample = reconstructed_signal(i);
+    end
+end
+
+function snr_value = calculate_snr(original, reconstructed)
+    signal_power = mean(original .^ 2);
+    noise_power = mean((original - reconstructed) .^ 2);
+    snr_value = 10 * log10(signal_power / noise_power);
+end

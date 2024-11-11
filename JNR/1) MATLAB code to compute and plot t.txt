@@ -1,0 +1,28 @@
+% MATLAB code to compute and plot the Fourier Transform of x(t) = e^{-2t}u(t)
+
+% Define frequency range for plotting
+f = linspace(-10, 10, 1000); % Frequency range from -10 Hz to 10 Hz
+
+% Compute the Fourier Transform of x(t) = e^{-2t}u(t)
+X_f = 1 ./ (2 + 1j * 2 * pi * f);
+
+% Compute magnitude and phase of X(f)
+magnitude_X_f = abs(X_f);
+phase_X_f = angle(X_f);
+
+% Plot magnitude of Fourier Transform
+figure;
+subplot(2, 1, 1);
+plot(f, magnitude_X_f, 'b', 'LineWidth', 1.5);
+title('Magnitude of Fourier Transform of x(t) = e^{-2t}u(t)');
+xlabel('Frequency (Hz)');
+ylabel('|X(f)|');
+grid on;
+
+% Plot phase of Fourier Transform
+subplot(2, 1, 2);
+plot(f, phase_X_f, 'r', 'LineWidth', 1.5);
+title('Phase of Fourier Transform of x(t) = e^{-2t}u(t)');
+xlabel('Frequency (Hz)');
+ylabel('Phase of X(f) (radians)');
+grid on;

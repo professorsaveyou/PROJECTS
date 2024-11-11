@@ -1,0 +1,94 @@
+% The Aliasing Conundrum - MATLAB Code
+
+% Define parameters for the test signal
+Fs1 = 800;       % Low sampling rate, at risk of aliasing
+Fs2 = 4000;      % Higher sampling rate, safely above Nyquist
+cutoff_freq = 1000; % Cutoff frequency for the Butterworth filter
+frequencies = [250, 600, 900, 1200, 1500, 2000]; % Test signal frequencies
+duration = 1;    % Signal duration in seconds
+
+% Generate time vectors
+t1 = linspace(0, duration, Fs1 * duration); % Time vector for Fs1
+t2 = linspace(0, duration, Fs2 * duration); % Time vector for Fs2
+
+% Generate test signals at each sampling rate
+signal1 = sum(sin(2 * pi * frequencies' * t1), 1); % Composite signal at Fs1
+signal2 = sum(sin(2 * pi * frequencies' * t2), 1); % Composite signal at Fs2
+
+% Design a Butterworth low-pass filter with a cutoff at 1000 Hz
+Wp = cutoff_freq / (Fs2 / 2); % Normalize for higher sampling rate
+filter_orders = [2, 4, 8];    % Filter orders to experiment with
+
+% Apply filters with different orders and compare results
+figure;
+for i = 1:length(filter_orders)
+    % Design Butterworth filter for each order
+    [b, a] = butter(filter_orders(i), Wp, 'low');
+
+    % Apply zero-phase filtering
+    filtered_signal1 = filtfilt(b, a, signal1); % Filtered signal at Fs1
+    filtered_signal2 = filtfilt(b, a, signal2); % Filtered signal at Fs2
+
+    % Plot time-domain results for Fs1
+    subplot(3, 2, (i - 1) * 2 + 1);
+    plot(t1, signal1, 'k', t1, filtered_signal1, 'r');
+    title(['Order ', num2str(filter_orders(i)), ' - Time Domain (Fs = 800 Hz)']);
+    xlabel('Time (s)');
+    ylabel('Amplitude');
+    legend('Original', 'Filtered');
+    
+    % Plot time-domain results for Fs2
+    subplot(3, 2, (i - 1) * 2 + 2);
+    plot(t2, signal2, 'k', t2, filtered_signal2, 'r');
+    title(['Order ', num2str(filter_orders(i)), ' - Time Domain (Fs = 4000 Hz)']);
+    xlabel('Time (s)');
+    ylabel('Amplitude');
+    legend('Original', 'Filtered');
+end
+
+% Frequency response of filters
+figure;
+for i = 1:length(filter_orders)
+    [b, a] = butter(filter_orders(i), Wp, 'low');
+    [h, w] = freqz(b, a, 1024, Fs2);
+    subplot(3, 1, i);
+    plot(w, 20 * log10(abs(h)));
+    title(['Frequency Response - Butterworth Filter Order ', num2str(filter_orders(i))]);
+    xlabel('Frequency (Hz)');
+    ylabel('Gain (dB)');
+    ylim([-80 5]);
+end
+
+% Compute Power Spectral Density (PSD) for original and filtered signals
+figure;
+% PSD for the aliased signal (Fs1)
+subplot(2,1,1);
+pwelch(signal1, [], [], [], Fs1, 'power');
+title('Power Spectral Density of Original Signal (Fs = 800 Hz)');
+xlabel('Frequency (Hz)');
+ylabel('Power/Frequency (dB/Hz)');
+
+% PSD for the properly sampled signal (Fs2)
+subplot(2,1,2);
+pwelch(signal2, [], [], [], Fs2, 'power');
+title('Power Spectral Density of Original Signal (Fs = 4000 Hz)');
+xlabel('Frequency (Hz)');
+ylabel('Power/Frequency (dB/Hz)');
+
+% Zero-phase filtered PSDs for comparison
+figure;
+% PSD of filtered signal at Fs1 with highest filter order
+filtered_signal1_order8 = filtfilt(b, a, signal1);
+subplot(2,1,1);
+pwelch(filtered_signal1_order8, [], [], [], Fs1, 'power');
+title('Power Spectral Density of Filtered Signal (Fs = 800 Hz, Order 8)');
+xlabel('Frequency (Hz)');
+ylabel('Power/Frequency (dB/Hz)');
+
+% PSD of filtered signal at Fs2 with highest filter order
+filtered_signal2_order8 = filtfilt(b, a, signal2);
+subplot(2,1,2);
+pwelch(filtered_signal2_order8, [], [], [], Fs2, 'power');
+title('Power Spectral Density of Filtered Signal (Fs = 4000 Hz, Order 8)');
+xlabel('Frequency (Hz)');
+ylabel('Power/Frequency (dB/Hz)');

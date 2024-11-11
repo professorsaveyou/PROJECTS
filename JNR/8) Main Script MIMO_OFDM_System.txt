@@ -1,0 +1,27 @@
+% Main Script: MIMO_OFDM_System.m
+clear;
+clc;
+
+% Define parameters
+N_symbols = 1024;         % Number of symbols
+bits = randi([0 1], 1, N_symbols * 2);  % Random bit stream (since QPSK maps 2 bits to 1 symbol)
+
+% Call the QPSK modulation function
+modulated_symbols = qpsk_modulation(bits, N_symbols);
+
+% Display the modulated symbols
+disp(modulated_symbols);
+
+% Define your QPSK modulation function
+function modulated_symbols = qpsk_modulation(bits, N_symbols)
+    % QPSK Modulation
+    % bits: Input bit stream
+    % N_symbols: Number of symbols (total length / 2 for QPSK)
+    
+    % Reshape the bit stream into pairs of bits (2 bits per symbol for QPSK)
+    bits_reshaped = reshape(bits, 2, N_symbols); 
+    
+    % Map bits to QPSK symbols: 
+    % 00 -> +1 +j, 01 -> +1 -j, 10 -> -1 +j, 11 -> -1 -j
+    modulated_symbols = 1/sqrt(2) * (2*bits_reshaped(1,:) - 1 + 1j*(2*bits_reshaped(2,:) - 1));
+end
